@@ -109,6 +109,17 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Keep-alive: re-arm the periodic check and reconnect after boot or an update. -->
+        <receiver
+            android:name=".util.KeepAliveReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="net.pangolin.Pangolin.action.KEEP_ALIVE_TICK" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".tile.PangolinTileService"
             android:exported="true"

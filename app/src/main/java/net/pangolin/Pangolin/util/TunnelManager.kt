@@ -214,8 +214,14 @@ class TunnelManager private constructor(
     /**
      * Connect to VPN tunnel
      */
+    /** Called after a user-initiated connect started the tunnel. */
+    @Volatile
+    var onUserConnected: (() -> Unit)? = null
+
     suspend fun connect() {
-        connectInternal(useStoredCredentials = false)
+        if (connectInternal(useStoredCredentials = false) == TunnelStartResult.STARTED) {
+            onUserConnected?.invoke()
+        }
     }
 
     suspend fun connectFromStoredAccount(): TunnelStartResult =

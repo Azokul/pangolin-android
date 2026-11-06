@@ -35,4 +35,19 @@
     
     <!-- Login -->
     <string name="terms_and_privacy_text"><![CDATA[By continuing, you agree to our <a href="https://pangolin.net/tos">Terms of Service</a> and <a href="https://pangolin.net/privacy">Privacy Policy</a>.]]></string>
+    <string name="reliability_title">Stay connected</string>
+    <string name="reliability_title_xiaomi">Stay connected (Xiaomi phone)</string>
+    <string name="auto_reconnect_title">Reconnect automatically</string>
+    <string name="auto_reconnect_summary">If Android or the battery manager closes Pangolin, bring the VPN back up: on restart, after boot and with a check every 15 minutes. Disconnecting by hand turns it off until you connect again.</string>
+    <string name="battery_optimization_title">Battery optimization</string>
+    <string name="battery_optimization_ok">Pangolin is not optimized: Android lets it run in the background.</string>
+    <string name="battery_optimization_needed">Pangolin is optimized: Android may stop the VPN. Tap to allow background use.</string>
+    <string name="miui_autostart_title">Autostart</string>
+    <string name="miui_autostart_summary">Turn on Autostart for Pangolin, so MIUI lets it restart after it closes it.</string>
+    <string name="miui_battery_saver_title">MIUI battery saver</string>
+    <string name="miui_battery_saver_summary">Choose “No restrictions” for Pangolin. This is MIUI’s own setting, separate from Android’s battery optimization.</string>
+    <string name="miui_recents_lock_title">Lock in recent apps</string>
+    <string name="miui_recents_lock_summary">In the recent apps screen, long-press Pangolin and tap the lock, so “Clear all” does not close it.</string>
+    <string name="vpn_always_on_title">Always-on VPN</string>
+    <string name="vpn_always_on_summary">Open Android’s VPN settings, tap the gear next to Pangolin and turn on Always-on VPN: Android then restarts it too. Leave “Block connections without VPN” off.</string>
 </resources>

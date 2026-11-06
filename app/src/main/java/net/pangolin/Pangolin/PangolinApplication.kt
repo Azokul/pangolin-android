@@ -5,6 +5,7 @@ import android.util.Log
 import net.pangolin.Pangolin.util.CrashHandler
 import net.pangolin.Pangolin.util.SocketManager
 import net.pangolin.Pangolin.util.StandbyDetector
+import net.pangolin.Pangolin.util.XiaomiSetup
 
 /**
  * Application class for Pangolin.
@@ -32,6 +33,8 @@ class PangolinApplication : Application(), StandbyDetector.StandbyListener {
 
         // Android creates Application before a system-started VpnService, so this graph is
         // available even when no Activity has been opened in the current process.
+        // Before the runtime reads the config, so a first start on Xiaomi gets them.
+        XiaomiSetup.applyDefaults(this)
         runtime = PangolinRuntime(this)
         socketManager = runtime.socketManager
 

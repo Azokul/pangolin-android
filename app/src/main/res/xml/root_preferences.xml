@@ -56,6 +56,57 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        android:key="reliabilityCategory"
+        app:layout="@layout/preference_category_material_card">
+        <!-- The card layout has no title view: a non-selectable row acts as the heading. -->
+        <Preference
+            android:key="reliabilityHeader"
+            android:title="@string/reliability_title"
+            android:persistent="false"
+            android:selectable="false"
+            app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat
+            android:key="autoReconnect"
+            android:title="@string/auto_reconnect_title"
+            android:summary="@string/auto_reconnect_summary"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false" />
+        <Preference
+            android:key="batteryOptimizationEntry"
+            android:title="@string/battery_optimization_title"
+            android:persistent="false"
+            app:iconSpaceReserved="false" />
+        <Preference
+            android:key="miuiAutostartEntry"
+            android:title="@string/miui_autostart_title"
+            android:summary="@string/miui_autostart_summary"
+            android:persistent="false"
+            app:isPreferenceVisible="false"
+            app:iconSpaceReserved="false" />
+        <Preference
+            android:key="miuiBatterySaverEntry"
+            android:title="@string/miui_battery_saver_title"
+            android:summary="@string/miui_battery_saver_summary"
+            android:persistent="false"
+            app:isPreferenceVisible="false"
+            app:iconSpaceReserved="false" />
+        <Preference
+            android:key="miuiRecentsLockEntry"
+            android:title="@string/miui_recents_lock_title"
+            android:summary="@string/miui_recents_lock_summary"
+            android:persistent="false"
+            android:selectable="false"
+            app:isPreferenceVisible="false"
+            app:iconSpaceReserved="false" />
+        <Preference
+            android:key="vpnAlwaysOnEntry"
+            android:title="@string/vpn_always_on_title"
+            android:summary="@string/vpn_always_on_summary"
+            android:persistent="false"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
         app:layout="@layout/preference_category_material_card">
         <Preference
             android:title="See docs for more info on these settings"

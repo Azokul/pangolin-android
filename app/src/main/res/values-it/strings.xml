@@ -21,4 +21,19 @@
     <string name="excluded_apps_empty_system_hidden">Nessuna app trovata. Le app di sistema sono nascoste: mostrale dal menu.</string>
     <string name="excluded_apps_show_system">Mostra app di sistema</string>
     <string name="excluded_apps_clear">Deseleziona tutto</string>
+    <string name="reliability_title">Resta connesso</string>
+    <string name="reliability_title_xiaomi">Resta connesso (telefono Xiaomi)</string>
+    <string name="auto_reconnect_title">Riconnetti automaticamente</string>
+    <string name="auto_reconnect_summary">Se Android o il risparmio batteria chiudono Pangolin, riaccende la VPN: alla riapertura, all’accensione e con un controllo ogni 15 minuti. Se la disconnetti a mano resta spenta finché non la riconnetti.</string>
+    <string name="battery_optimization_title">Ottimizzazione batteria</string>
+    <string name="battery_optimization_ok">Pangolin non è ottimizzata: Android la lascia girare in background.</string>
+    <string name="battery_optimization_needed">Pangolin è ottimizzata: Android può fermare la VPN. Tocca per consentire l’uso in background.</string>
+    <string name="miui_autostart_title">Avvio automatico</string>
+    <string name="miui_autostart_summary">Attiva l’avvio automatico per Pangolin, così MIUI la lascia ripartire dopo averla chiusa.</string>
+    <string name="miui_battery_saver_title">Risparmio batteria MIUI</string>
+    <string name="miui_battery_saver_summary">Scegli “Nessuna restrizione” per Pangolin. È l’impostazione di MIUI, diversa dall’ottimizzazione batteria di Android.</string>
+    <string name="miui_recents_lock_title">Blocca nelle app recenti</string>
+    <string name="miui_recents_lock_summary">Nella schermata delle app recenti tieni premuto Pangolin e tocca il lucchetto, così “Pulisci tutto” non la chiude.</string>
+    <string name="vpn_always_on_title">VPN sempre attiva</string>
+    <string name="vpn_always_on_summary">Apri le impostazioni VPN di Android, tocca l’ingranaggio accanto a Pangolin e attiva “VPN sempre attiva”: così la riavvia anche Android. Lascia spento “Blocca connessioni senza VPN”.</string>
 </resources>

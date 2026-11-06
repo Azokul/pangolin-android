@@ -45,6 +45,7 @@ import org.json.JSONException;
 public final class GoBackend implements Backend {
     private static final String TAG = "WireGuard/GoBackend";
     @Nullable private static AlwaysOnCallback alwaysOnCallback;
+    @Nullable private static volatile Runnable revokeCallback;
     private static CompletableFuture<VpnService> vpnService = new CompletableFuture<>();
     private static volatile boolean persistentNotificationEnabled = false;
     private final Context context;
@@ -74,6 +75,11 @@ public final class GoBackend implements Backend {
      */
     public static void setAlwaysOnCallback(final AlwaysOnCallback cb) {
         alwaysOnCallback = cb;
+    }
+
+    /** Invoked when Android revokes the VPN (another VPN started, or the user stopped it). */
+    public static void setRevokeCallback(@Nullable final Runnable cb) {
+        revokeCallback = cb;
     }
 
     /** Keep the foreground notification aligned with data-path readiness. */
@@ -819,6 +825,9 @@ public final class GoBackend implements Backend {
             }
             ownershipRevoked = true;
             alwaysOnOwned = false;
+            final Runnable onRevoked = revokeCallback;
+            if (onRevoked != null)
+                onRevoked.run();
             if (alwaysOnCallback != null)
                 alwaysOnCallback.alwaysOnStopped();
             stopSelf();

@@ -24,6 +24,7 @@ import net.pangolin.Pangolin.databinding.SettingsActivityBinding
 import net.pangolin.Pangolin.util.DnsServerAddress
 import net.pangolin.Pangolin.util.ExcludedApplications
 import net.pangolin.Pangolin.util.TunnelManager
+import net.pangolin.Pangolin.util.XiaomiSetup
 
 class SettingsActivity : BaseNavigationActivity() {
 
@@ -100,6 +101,7 @@ class SettingsActivity : BaseNavigationActivity() {
             setupDnsSettingsDependencies()
 
             setupExcludedApps()
+            setupReliability()
             
             // Observe tunnel state and disable settings when tunnel is active
             lifecycleScope.launch {
@@ -163,6 +165,47 @@ class SettingsActivity : BaseNavigationActivity() {
             super.onResume()
             // The in-app list may have changed in ExcludedAppsActivity
             refreshExcludedAppsEntries()
+            refreshBatteryOptimizationEntry()
+        }
+
+        private fun setupReliability() {
+            val context = requireContext()
+            findPreference<Preference>("batteryOptimizationEntry")?.setOnPreferenceClickListener {
+                XiaomiSetup.openBatteryOptimization(context)
+                true
+            }
+            findPreference<Preference>("vpnAlwaysOnEntry")?.setOnPreferenceClickListener {
+                XiaomiSetup.openVpnSettings(context)
+                true
+            }
+            val xiaomi = XiaomiSetup.isXiaomi
+            findPreference<Preference>("miuiAutostartEntry")?.apply {
+                isVisible = xiaomi
+                setOnPreferenceClickListener {
+                    XiaomiSetup.openAutostart(context)
+                    true
+                }
+            }
+            findPreference<Preference>("miuiBatterySaverEntry")?.apply {
+                isVisible = xiaomi
+                setOnPreferenceClickListener {
+                    XiaomiSetup.openMiuiBatterySaver(context)
+                    true
+                }
+            }
+            findPreference<Preference>("miuiRecentsLockEntry")?.isVisible = xiaomi
+            if (xiaomi) {
+                findPreference<Preference>("reliabilityHeader")
+                    ?.title = getString(R.string.reliability_title_xiaomi)
+            }
+            refreshBatteryOptimizationEntry()
+        }
+
+        private fun refreshBatteryOptimizationEntry() {
+            val ok = XiaomiSetup.isIgnoringBatteryOptimizations(requireContext())
+            findPreference<Preference>("batteryOptimizationEntry")?.summary = getString(
+                if (ok) R.string.battery_optimization_ok else R.string.battery_optimization_needed,
+            )
         }
 
         private fun setupExcludedApps() {
@@ -217,6 +260,8 @@ class SettingsActivity : BaseNavigationActivity() {
 
                 // Presentation only: keep this switch usable while connected.
                 if (preference.key == "persistentVpnNotification") continue
+                // Reliability settings do not touch the tunnel config.
+                if (preference.key == "reliabilityCategory") continue
                 
                 // Skip the info/link preference at the top
                 if (preference.key == null && preference.title?.toString()?.contains("docs") == true) {

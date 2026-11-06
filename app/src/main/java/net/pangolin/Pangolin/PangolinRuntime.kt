@@ -1,12 +1,14 @@
 package net.pangolin.Pangolin
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Build
 import android.util.Log
+import androidx.preference.PreferenceManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -14,6 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import net.pangolin.Pangolin.PacketTunnel.GoBackend
 import net.pangolin.Pangolin.util.APIClient
@@ -22,6 +25,7 @@ import net.pangolin.Pangolin.util.AndroidFingerprintCollector
 import net.pangolin.Pangolin.util.AuthManager
 import net.pangolin.Pangolin.util.ConfigManager
 import net.pangolin.Pangolin.util.FingerprintManager
+import net.pangolin.Pangolin.util.KeepAlive
 import net.pangolin.Pangolin.util.SecretManager
 import net.pangolin.Pangolin.util.SocketManager
 import net.pangolin.Pangolin.util.TunnelManager
@@ -129,6 +133,18 @@ class PangolinRuntime(private val context: Context) {
     @Volatile
     private var alwaysOnRequested = false
 
+    // The user connected and has not disconnected since: recover like Always-On does
+    // (process death, network loss, stalled control plane) without blocking a disconnect.
+    @Volatile
+    private var keepAliveRequested = KeepAlive.isActive(context)
+
+    // SharedPreferences keeps listeners weakly: hold this one for the process lifetime.
+    private val keepAlivePrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == KeepAlive.WANTED_PREF_KEY || key == KeepAlive.ENABLED_PREF_KEY) refreshKeepAlive()
+    }
+
+    private fun recoveryRequested(): Boolean = alwaysOnRequested || keepAliveRequested
+
     private var reconnectJob: Job? = null
     private var watchdogJob: Job? = null
     private var stableConnectionJob: Job? = null
@@ -194,6 +210,13 @@ class PangolinRuntime(private val context: Context) {
             }
         }
         authManager.tunnelManager = tunnelManager
+        tunnelManager.onUserConnected = { KeepAlive.setWanted(context, true) }
+        // Another VPN took over, or the user stopped Pangolin from Android settings.
+        GoBackend.setRevokeCallback { forgetKeepAlive() }
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .registerOnSharedPreferenceChangeListener(keepAlivePrefsListener)
+        // Alarms do not survive a reboot or an update: re-arm on every process start.
+        KeepAlive.syncAlarm(context)
         authManager.requestUserDisconnect = { disconnectFromUser() }
         GoBackend.setAlwaysOnCallback(object : GoBackend.AlwaysOnCallback {
             override fun alwaysOnTriggered() {
@@ -207,7 +230,8 @@ class PangolinRuntime(private val context: Context) {
             override fun alwaysOnStopped() {
                 Log.i(tag, "Android Always-On ownership ended")
                 alwaysOnRequested = false
-                cancelRecovery()
+                // A manual connection the user still wants keeps its recovery running.
+                if (!recoveryRequested()) cancelRecovery()
             }
         })
 
@@ -218,7 +242,7 @@ class PangolinRuntime(private val context: Context) {
         }
         scope.launch {
             accountManager.store.drop(1).collectLatest {
-                if (alwaysOnRequested) {
+                if (recoveryRequested()) {
                     reconnectBackoff.reset()
                     handleTunnelState(tunnelManager.tunnelState.value, immediate = true)
                 }
@@ -226,7 +250,7 @@ class PangolinRuntime(private val context: Context) {
         }
         scope.launch {
             authManager.sessionExpired.drop(1).collectLatest { expired ->
-                if (!alwaysOnRequested) return@collectLatest
+                if (!recoveryRequested()) return@collectLatest
                 if (expired) {
                     cancelRecovery()
                 } else {
@@ -253,12 +277,48 @@ class PangolinRuntime(private val context: Context) {
             tunnelManager.platformAlwaysOnState(),
         )
         if (!AlwaysOnReconnectPolicy.canUserDisconnect(alwaysOnRequested)) return false
+        forgetKeepAlive()
         tunnelManager.disconnect()
         return true
     }
 
+    /** Periodic, boot or update wake-up: reconnect now if the user wants the VPN up. */
+    suspend fun keepAliveTick() {
+        refreshKeepAlive()
+        if (!keepAliveRequested) return
+        val state = tunnelManager.tunnelState.value
+        if (state.isServiceRunning || state.isConnecting) return
+        Log.i(tag, "Keep-alive: VPN wanted but down, reconnecting")
+        reconnectBackoff.reset()
+        synchronized(reconnectLock) {
+            reconnectJob?.cancel()
+            reconnectJob = null
+        }
+        handleTunnelState(state, immediate = true)
+        // Hold the caller (a broadcast receiver) until the service is starting.
+        tunnelManager.tunnelState.first { it.isServiceRunning || it.isConnecting || !recoveryRequested() }
+    }
+
+    private fun refreshKeepAlive() {
+        val active = KeepAlive.isActive(context)
+        if (active == keepAliveRequested) return
+        keepAliveRequested = active
+        if (active) {
+            reconnectBackoff.reset()
+            handleTunnelState(tunnelManager.tunnelState.value, immediate = true)
+        } else if (!alwaysOnRequested) {
+            cancelRecovery()
+        }
+    }
+
+    private fun forgetKeepAlive() {
+        keepAliveRequested = false
+        KeepAlive.setWanted(context, false)
+        if (!alwaysOnRequested) cancelRecovery()
+    }
+
     private fun handleTunnelState(state: TunnelState, immediate: Boolean) {
-        if (!alwaysOnRequested) return
+        if (!recoveryRequested()) return
         if (!state.isFullyConnected) cancelStableBackoffReset()
 
         val action = AlwaysOnReconnectPolicy.action(
@@ -286,9 +346,9 @@ class PangolinRuntime(private val context: Context) {
             if (reconnectJob?.isActive == true) return
             reconnectJob = scope.launch {
                 var firstAttempt = immediate
-                while (alwaysOnRequested) {
+                while (recoveryRequested()) {
                     val action = AlwaysOnReconnectPolicy.action(
-                        alwaysOnRequested = alwaysOnRequested,
+                        alwaysOnRequested = recoveryRequested(),
                         state = tunnelManager.tunnelState.value,
                         hasStoredState = hasStoredAlwaysOnState(),
                         sessionExpired = authManager.sessionExpired.value,
@@ -325,11 +385,11 @@ class PangolinRuntime(private val context: Context) {
         synchronized(watchdogLock) {
             if (watchdogJob?.isActive == true) return
             watchdogJob = scope.launch {
-                while (alwaysOnRequested) {
+                while (recoveryRequested()) {
                     delay(STALLED_CONTROL_PLANE_TIMEOUT_MS)
                     when (
                         AlwaysOnRecoveryPolicy.deadlineAction(
-                            alwaysOnRequested,
+                            recoveryRequested(),
                             tunnelManager.tunnelState.value,
                             hasUnderlyingNetwork(),
                         )
@@ -351,7 +411,7 @@ class PangolinRuntime(private val context: Context) {
         if (stableConnectionJob?.isActive == true) return
         stableConnectionJob = scope.launch {
             var observedEpoch = tunnelManager.readinessEpochSnapshot()
-            while (alwaysOnRequested) {
+            while (recoveryRequested()) {
                 delay(STABLE_CONNECTION_RESET_MS)
                 if (!tunnelManager.tunnelState.value.isFullyConnected) return@launch
 
@@ -391,7 +451,7 @@ class PangolinRuntime(private val context: Context) {
     }
 
     private fun wakeRecoveryForNetwork() {
-        if (!alwaysOnRequested) return
+        if (!recoveryRequested()) return
         val state = tunnelManager.tunnelState.value
         if (AlwaysOnReconnectPolicy.action(
                 true,
