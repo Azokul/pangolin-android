@@ -335,7 +335,7 @@ public final class GoBackend implements Backend {
             NetworkSettingsPoller.applySettingsToBuilder(builder, settings, tunnelName);
             final TunnelConfig config = currentConfig;
             if (config != null)
-                applyExcludedApplications(builder, config.getExcludedApplications());
+                applyAppRouting(builder, config);
             Log.d(TAG, "Applied settings to builder");
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -391,12 +391,29 @@ public final class GoBackend implements Backend {
     }
 
     /**
-     * Excludes the given apps from the VPN so their traffic (including DNS) uses the
-     * underlying network directly. Must be applied to every builder before establish(),
-     * since each re-established interface starts with no exclusions.
+     * Decides which apps use the VPN. With an allow list only those apps (and Pangolin itself)
+     * go through the tunnel, everything else uses the underlying network; otherwise every app
+     * does except the excluded ones. Android throws if a builder gets both kinds of call, so
+     * exactly one list is applied. Must run on every builder before establish(), since each
+     * re-established interface starts with no rules.
      */
-    private static void applyExcludedApplications(VpnService.Builder builder, List<String> packageNames) {
-        for (String packageName : packageNames) {
+    private static void applyAppRouting(VpnService.Builder builder, TunnelConfig config) {
+        List<String> allowed = config.getAllowedApplications();
+        if (allowed != null && !allowed.isEmpty()) {
+            int added = 0;
+            for (String packageName : allowed) {
+                try {
+                    builder.addAllowedApplication(packageName);
+                    added++;
+                    Log.d(TAG, "Only-mode: application uses the VPN: " + packageName);
+                } catch (PackageManager.NameNotFoundException e) {
+                    Log.d(TAG, "Application not installed, not allowing: " + packageName);
+                }
+            }
+            if (added > 0) return;
+            // Nothing installed from the list (Pangolin itself always is): fall through
+        }
+        for (String packageName : config.getExcludedApplications()) {
             try {
                 builder.addDisallowedApplication(packageName);
                 Log.d(TAG, "Excluded application from VPN: " + packageName);
@@ -561,7 +578,7 @@ public final class GoBackend implements Backend {
            // add a dummy address so we can get the interface up. We will change it later...
            builder.addAddress("169.254.169.254", 32);
 
-           applyExcludedApplications(builder, config.getExcludedApplications());
+           applyAppRouting(builder, config);
 
            // Establish the tunnel to get a file descriptor
            currentTunFd = builder.establish();

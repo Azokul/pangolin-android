@@ -46,6 +46,8 @@ public class TunnelConfig {
     private final List<Integer> gatewaySiteIds;
     // Android package names whose traffic bypasses the VPN interface entirely
     private final List<String> excludedApplications;
+    // Android package names that are the only ones to use the VPN (empty: all apps)
+    private final List<String> allowedApplications;
 
     private TunnelConfig(Builder builder) {
         this.endpoint = builder.endpoint;
@@ -67,6 +69,7 @@ public class TunnelConfig {
         this.gatewaySiteResourceId = builder.gatewaySiteResourceId;
         this.gatewaySiteIds = builder.gatewaySiteIds;
         this.excludedApplications = builder.excludedApplications;
+        this.allowedApplications = builder.allowedApplications;
     }
 
     /**
@@ -189,6 +192,10 @@ public class TunnelConfig {
         return excludedApplications;
     }
 
+    public List<String> getAllowedApplications() {
+        return allowedApplications;
+    }
+
     @Override
     public String toString() {
         return "TunnelConfig{" +
@@ -211,6 +218,7 @@ public class TunnelConfig {
                 ", gatewaySiteResourceId=" + gatewaySiteResourceId +
                 ", gatewaySiteIds=" + gatewaySiteIds +
                 ", excludedApplications=" + excludedApplications +
+                ", allowedApplications=" + allowedApplications +
                 '}';
     }
 
@@ -237,6 +245,7 @@ public class TunnelConfig {
         private int gatewaySiteResourceId = 0;
         private List<Integer> gatewaySiteIds = new ArrayList<>();
         private List<String> excludedApplications = new ArrayList<>();
+        private List<String> allowedApplications = new ArrayList<>();
 
         public Builder setEndpoint(String endpoint) {
             this.endpoint = endpoint;
@@ -335,6 +344,11 @@ public class TunnelConfig {
 
         public Builder setExcludedApplications(List<String> packageNames) {
             this.excludedApplications = packageNames != null ? packageNames : new ArrayList<>();
+            return this;
+        }
+
+        public Builder setAllowedApplications(List<String> packageNames) {
+            this.allowedApplications = packageNames != null ? packageNames : new ArrayList<>();
             return this;
         }
 

@@ -17,7 +17,8 @@ class ConfigManager private constructor(context: Context) {
     
     private val preferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
-            "overrideDns", "tunnelDns", "primaryDNSServer", "secondaryDNSServer", "logCollectionEnabled", "mtu", "persistentVpnNotification", "exitNodeTakesPrecedence", ExcludedApplications.PREF_KEY -> {
+            "overrideDns", "tunnelDns", "primaryDNSServer", "secondaryDNSServer", "logCollectionEnabled", "mtu", "persistentVpnNotification", "exitNodeTakesPrecedence", ExcludedApplications.PREF_KEY,
+            ExcludedApplications.ALLOWED_PREF_KEY, ExcludedApplications.MODE_PREF_KEY -> {
                 Log.d(tag, "Preference changed: $key, reloading config")
                 _config.value = loadConfig()
             }
@@ -40,7 +41,9 @@ class ConfigManager private constructor(context: Context) {
                 persistentVpnNotification = prefs.getBoolean("persistentVpnNotification", false),
                 exitNodeTakesPrecedence = prefs.getBoolean("exitNodeTakesPrecedence", false),
                 // getStringSet returns SharedPreferences' internal cached instance; copy it so Config never shares (or mutates) it
-                excludedApplications = prefs.getStringSet(ExcludedApplications.PREF_KEY, null)?.toSet() ?: emptySet()
+                excludedApplications = prefs.getStringSet(ExcludedApplications.PREF_KEY, null)?.toSet() ?: emptySet(),
+                vpnAppMode = prefs.getString(ExcludedApplications.MODE_PREF_KEY, null) ?: ExcludedApplications.MODE_EXCLUDE,
+                allowedApplications = prefs.getStringSet(ExcludedApplications.ALLOWED_PREF_KEY, null)?.toSet() ?: emptySet()
             )
         } catch (e: Exception) {
             Log.e(tag, "Error loading config: ${e.message}", e)
@@ -59,6 +62,8 @@ class ConfigManager private constructor(context: Context) {
                 putBoolean("persistentVpnNotification", config.persistentVpnNotification)
                 putBoolean("exitNodeTakesPrecedence", config.exitNodeTakesPrecedence ?: false)
                 putStringSet(ExcludedApplications.PREF_KEY, config.excludedApplications)
+                putString(ExcludedApplications.MODE_PREF_KEY, config.vpnAppMode)
+                putStringSet(ExcludedApplications.ALLOWED_PREF_KEY, config.allowedApplications)
                 if (config.mtu != null) putString("mtu", config.mtu.toString()) else remove("mtu")
                 apply()
             }

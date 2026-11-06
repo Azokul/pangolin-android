@@ -8,8 +8,17 @@
     <string name="vpn_notification_permission_denied">Allow notifications for Pangolin in Android settings to show VPN status.</string>
 
     <!-- VPN app exclusion -->
-    <string name="excluded_apps_title">Excluded Apps</string>
-    <string name="excluded_apps_none">No apps are excluded. Excluded apps bypass the VPN and use your network directly. Takes effect on the next connect.</string>
+    <string name="excluded_apps_title">Apps using the VPN</string>
+    <string name="excluded_apps_none">All apps use the VPN. Choose apps to exclude, or pick only the apps that should use it. Takes effect on the next connect.</string>
+    <string name="vpn_app_mode_exclude">All except…</string>
+    <string name="vpn_app_mode_only">Only these</string>
+    <string name="vpn_app_mode_exclude_hint">Every app uses the VPN except the ticked ones, which use your network directly.</string>
+    <string name="vpn_app_mode_only_hint">Only the ticked apps (and Pangolin) use the VPN. Every other app uses your network directly, so push notifications, calls and Android Auto are not affected.</string>
+    <string name="vpn_app_mode_only_empty_hint">Tick the apps that should use the VPN. Until you tick at least one, every app uses it.</string>
+    <plurals name="vpn_only_apps_count">
+        <item quantity="one">Only %d app uses the VPN. Takes effect on the next connect.</item>
+        <item quantity="other">Only %d apps use the VPN. Takes effect on the next connect.</item>
+    </plurals>
     <plurals name="excluded_apps_count">
         <item quantity="one">%d app bypasses the VPN. Takes effect on the next connect.</item>
         <item quantity="other">%d apps bypass the VPN. Takes effect on the next connect.</item>

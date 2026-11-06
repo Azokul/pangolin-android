@@ -29,6 +29,30 @@ class ExcludedApplicationsTest {
     }
 
     @Test
+    fun onlyModeAllowsSelectedAppsPlusPangolin() {
+        val config = Config(vpnAppMode = ExcludedApplications.MODE_ONLY, allowedApplications = setOf("com.android.chrome", "io.homeassistant.companion.android"),
+            excludedApplications = setOf("com.excluded"))
+        assertEquals(listOf("com.android.chrome", "io.homeassistant.companion.android", own).sorted(),
+            ExcludedApplications.allowedForConfig(config, own))
+        // The exclusion list is ignored in only mode: Android can't mix the two
+        assertTrue(ExcludedApplications.forConfig(config, own).isEmpty())
+    }
+
+    @Test
+    fun onlyModeWithNothingSelectedFallsBackToAllApps() {
+        val config = Config(vpnAppMode = ExcludedApplications.MODE_ONLY, allowedApplications = setOf(" "), excludedApplications = setOf("com.a"))
+        assertTrue(ExcludedApplications.allowedForConfig(config, own).isEmpty())
+        assertEquals(listOf("com.a"), ExcludedApplications.forConfig(config, own))
+    }
+
+    @Test
+    fun excludeModeIgnoresTheAllowList() {
+        val config = Config(allowedApplications = setOf("com.android.chrome"), excludedApplications = setOf("com.a"))
+        assertTrue(ExcludedApplications.allowedForConfig(config, own).isEmpty())
+        assertEquals(listOf("com.a"), ExcludedApplications.forConfig(config, own))
+    }
+
+    @Test
     fun displayOrderPutsExcludedFirstThenSortsByLabel() {
         val apps = listOf(
             InstalledApp("com.z", "zebra"),

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds install next to the store app: give them their own name -->
+<resources>
+    <string name="app_name">Pangolin per-app</string>
+</resources>

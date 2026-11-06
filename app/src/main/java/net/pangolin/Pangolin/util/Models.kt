@@ -15,7 +15,10 @@ data class Config(
     val mtu: Int? = null,
     val persistentVpnNotification: Boolean = false,
     val exitNodeTakesPrecedence: Boolean? = null,
-    val excludedApplications: Set<String> = emptySet()
+    val excludedApplications: Set<String> = emptySet(),
+    // "exclude" (all apps except excludedApplications) or "only" (only allowedApplications)
+    val vpnAppMode: String = "exclude",
+    val allowedApplications: Set<String> = emptySet()
 )
 
 // MARK: - Account Types

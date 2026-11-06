@@ -1,16 +1,45 @@
 package net.pangolin.Pangolin.util
 
-/** Decides which apps bypass the VPN interface. */
+/**
+ * Decides which apps use the VPN interface.
+ *
+ * Two modes, each with its own list so switching mode never loses a selection:
+ * - [MODE_EXCLUDE]: every app uses the VPN except the excluded ones (addDisallowedApplication).
+ * - [MODE_ONLY]: only the selected apps use the VPN; everything else uses the network directly
+ *   (addAllowedApplication). Android does not allow mixing the two on one builder.
+ */
 internal object ExcludedApplications {
     /** SharedPreferences key of the in-app exclusion list (a string set of package names). */
     const val PREF_KEY = "excludedApplications"
 
+    /** SharedPreferences key of the "only these apps" list (a string set of package names). */
+    const val ALLOWED_PREF_KEY = "allowedApplications"
+
+    /** SharedPreferences key of the mode: [MODE_EXCLUDE] or [MODE_ONLY]. */
+    const val MODE_PREF_KEY = "vpnAppMode"
+    const val MODE_EXCLUDE = "exclude"
+    const val MODE_ONLY = "only"
+
+    /** Whether the tunnel will run in "only these apps" mode with this config. */
+    fun isOnlyMode(config: Config): Boolean =
+        config.vpnAppMode == MODE_ONLY && config.allowedApplications.any { it.isNotBlank() }
+
     /**
      * Packages to pass to VpnService.Builder.addDisallowedApplication(). Pangolin is never
-     * excluded, so the app's API traffic keeps following the tunnel.
+     * excluded, so the app's API traffic keeps following the tunnel. Empty in "only" mode.
      */
     fun forConfig(config: Config, ownPackage: String): List<String> =
-        config.excludedApplications.filter { it.isNotBlank() && it != ownPackage }.sorted()
+        if (isOnlyMode(config)) emptyList()
+        else config.excludedApplications.filter { it.isNotBlank() && it != ownPackage }.sorted()
+
+    /**
+     * Packages to pass to VpnService.Builder.addAllowedApplication(). Pangolin itself is always
+     * added, so its own API traffic follows the tunnel as in the default mode. Empty unless the
+     * mode is "only" and at least one app is selected: an empty allow list would mean every app.
+     */
+    fun allowedForConfig(config: Config, ownPackage: String): List<String> =
+        if (!isOnlyMode(config)) emptyList()
+        else (config.allowedApplications.filter { it.isNotBlank() } + ownPackage).distinct().sorted()
 
     /**
      * An installed app the user can pick; icons are kept by the UI. [isSystem] marks preinstalled

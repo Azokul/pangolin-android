@@ -174,11 +174,15 @@ class SettingsActivity : BaseNavigationActivity() {
         }
 
         private fun refreshExcludedAppsEntries() {
-            val count = preferenceManager.sharedPreferences
-                ?.getStringSet(ExcludedApplications.PREF_KEY, null)?.size ?: 0
-            findPreference<Preference>(EXCLUDED_APPS_ENTRY)?.summary =
-                if (count == 0) getString(R.string.excluded_apps_none)
-                else resources.getQuantityString(R.plurals.excluded_apps_count, count, count)
+            val prefs = preferenceManager.sharedPreferences
+            val only = prefs?.getString(ExcludedApplications.MODE_PREF_KEY, null) == ExcludedApplications.MODE_ONLY
+            val key = if (only) ExcludedApplications.ALLOWED_PREF_KEY else ExcludedApplications.PREF_KEY
+            val count = prefs?.getStringSet(key, null)?.size ?: 0
+            findPreference<Preference>(EXCLUDED_APPS_ENTRY)?.summary = when {
+                count == 0 -> getString(R.string.excluded_apps_none)
+                only -> resources.getQuantityString(R.plurals.vpn_only_apps_count, count, count)
+                else -> resources.getQuantityString(R.plurals.excluded_apps_count, count, count)
+            }
         }
 
         private fun updateLockInfo() {

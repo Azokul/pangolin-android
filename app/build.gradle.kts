@@ -20,6 +20,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Installs next to the Play Store app (different package and signing key)
+            applicationIdSuffix = ".perapp"
+            versionNameSuffix = "-perapp"
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(

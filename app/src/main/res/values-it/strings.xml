@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Italian for the per-app VPN screen only; every other string falls back to English. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="excluded_apps_title">App che usano la VPN</string>
+    <string name="excluded_apps_none">Tutte le app usano la VPN. Puoi escluderne alcune, oppure scegliere solo quelle che devono usarla. Vale dalla prossima connessione.</string>
+    <plurals name="excluded_apps_count">
+        <item quantity="one">%d app esclusa dalla VPN. Vale dalla prossima connessione.</item>
+        <item quantity="other">%d app escluse dalla VPN. Vale dalla prossima connessione.</item>
+    </plurals>
+    <plurals name="vpn_only_apps_count">
+        <item quantity="one">Solo %d app usa la VPN. Vale dalla prossima connessione.</item>
+        <item quantity="other">Solo %d app usano la VPN. Vale dalla prossima connessione.</item>
+    </plurals>
+    <string name="vpn_app_mode_exclude">Tutte tranne…</string>
+    <string name="vpn_app_mode_only">Solo queste</string>
+    <string name="vpn_app_mode_exclude_hint">Tutte le app usano la VPN tranne quelle spuntate, che usano direttamente la tua rete.</string>
+    <string name="vpn_app_mode_only_hint">Solo le app spuntate (e Pangolin) usano la VPN. Tutte le altre usano direttamente la tua rete: notifiche, chiamate e Android Auto non vengono toccate.</string>
+    <string name="vpn_app_mode_only_empty_hint">Spunta le app che devono usare la VPN. Finché non ne spunti almeno una, la usano tutte.</string>
+    <string name="excluded_apps_search">Cerca app</string>
+    <string name="excluded_apps_empty">Nessuna app trovata</string>
+    <string name="excluded_apps_empty_system_hidden">Nessuna app trovata. Le app di sistema sono nascoste: mostrale dal menu.</string>
+    <string name="excluded_apps_show_system">Mostra app di sistema</string>
+    <string name="excluded_apps_clear">Deseleziona tutto</string>
+</resources>

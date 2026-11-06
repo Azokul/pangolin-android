@@ -30,15 +30,20 @@ import net.pangolin.Pangolin.util.ExcludedApplications
 import net.pangolin.Pangolin.util.ExcludedApplications.InstalledApp
 
 /**
- * Lets the user pick apps that bypass the VPN. The choice is saved on every toggle and applied
- * via VpnService.Builder.addDisallowedApplication() on the next connect.
+ * Lets the user choose which apps use the VPN, in one of two modes:
+ * - exclude: every app uses the VPN except the ticked ones (addDisallowedApplication);
+ * - only: only the ticked apps use the VPN (addAllowedApplication).
+ * Each mode keeps its own list. Changes are saved on every toggle and applied on the next connect.
  */
 class ExcludedAppsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityExcludedAppsBinding
     private lateinit var prefs: SharedPreferences
 
+    // Ticked packages of the current mode's list
     private val excluded = HashSet<String>()
+    private var mode = ExcludedApplications.MODE_EXCLUDE
+    private var installed: List<InstalledApp> = emptyList()
     private var allApps: List<InstalledApp> = emptyList()
     private val icons = HashMap<String, Drawable>()
     private var loaded = false
@@ -54,17 +59,35 @@ class ExcludedAppsActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener { finish() }
 
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        excluded += prefs.getStringSet(ExcludedApplications.PREF_KEY, null).orEmpty()
+        mode = prefs.getString(ExcludedApplications.MODE_PREF_KEY, null) ?: ExcludedApplications.MODE_EXCLUDE
+        excluded += prefs.getStringSet(listKey(), null).orEmpty()
         showSystem = prefs.getBoolean(SHOW_SYSTEM_PREF_KEY, false)
+
+        binding.modeGroup.check(if (mode == ExcludedApplications.MODE_ONLY) R.id.mode_only else R.id.mode_exclude)
+        updateModeHint()
+        binding.modeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val newMode = if (checkedId == R.id.mode_only) ExcludedApplications.MODE_ONLY else ExcludedApplications.MODE_EXCLUDE
+            if (newMode == mode) return@addOnButtonCheckedListener
+            mode = newMode
+            prefs.edit { putString(ExcludedApplications.MODE_PREF_KEY, mode) }
+            excluded.clear()
+            excluded += prefs.getStringSet(listKey(), null).orEmpty()
+            updateModeHint()
+            if (loaded) {
+                allApps = ExcludedApplications.displayOrder(installed, excluded)
+                applyFilter()
+            }
+        }
 
         binding.list.layoutManager = LinearLayoutManager(this)
         binding.list.adapter = adapter
         binding.search.doAfterTextChanged { applyFilter() }
 
         lifecycleScope.launch {
-            val apps = withContext(Dispatchers.IO) { loadInstalledApps() }
+            installed = withContext(Dispatchers.IO) { loadInstalledApps() }
             // Ordered once, so rows don't jump around while the user toggles them
-            allApps = ExcludedApplications.displayOrder(apps, excluded)
+            allApps = ExcludedApplications.displayOrder(installed, excluded)
             loaded = true
             binding.progress.isVisible = false
             applyFilter()
@@ -137,8 +160,22 @@ class ExcludedAppsActivity : AppCompatActivity() {
     }
 
     private fun persist() {
-        // ConfigManager listens for this key and reloads the config
-        prefs.edit { putStringSet(ExcludedApplications.PREF_KEY, HashSet(excluded)) }
+        // ConfigManager listens for these keys and reloads the config
+        prefs.edit { putStringSet(listKey(), HashSet(excluded)) }
+        updateModeHint()
+    }
+
+    private fun listKey() =
+        if (mode == ExcludedApplications.MODE_ONLY) ExcludedApplications.ALLOWED_PREF_KEY else ExcludedApplications.PREF_KEY
+
+    private fun updateModeHint() {
+        binding.modeHint.setText(
+            when {
+                mode != ExcludedApplications.MODE_ONLY -> R.string.vpn_app_mode_exclude_hint
+                excluded.isEmpty() -> R.string.vpn_app_mode_only_empty_hint
+                else -> R.string.vpn_app_mode_only_hint
+            }
+        )
     }
 
     private inner class AppAdapter : RecyclerView.Adapter<AppViewHolder>() {

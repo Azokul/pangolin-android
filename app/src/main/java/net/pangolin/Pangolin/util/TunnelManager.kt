@@ -290,6 +290,7 @@ class TunnelManager private constructor(
             val mtu = config.mtu ?: 1280
             val exitNodeTakesPrecedence = config.exitNodeTakesPrecedence ?: false
             val excludedApplications = ExcludedApplications.forConfig(config, context.packageName)
+            val allowedApplications = ExcludedApplications.allowedForConfig(config, context.packageName)
 
             Log.d(tag, "DNS Configuration - overrideDns: $overrideDns, tunnelDns: $tunnelDns, primaryDNS: $primaryDNS, secondaryDNS: $secondaryDNS")
             Log.d(tag, "Log collection enabled: $logCollectionEnabled")
@@ -347,6 +348,7 @@ class TunnelManager private constructor(
                     .setPostures(initialPostures.toMap())
                     .setGateway(savedGateway?.siteResourceId ?: 0, savedGateway?.siteIds ?: emptyList())
                     .setExcludedApplications(excludedApplications)
+                    .setAllowedApplications(allowedApplications)
                     .build()
 
                 Log.d(tag, "=== TUNNEL CONFIG: Starting tunnel with OLM ID: $olmId, Org ID: $orgId ===")
