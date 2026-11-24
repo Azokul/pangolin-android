@@ -148,6 +148,7 @@ class SettingsActivity : BaseNavigationActivity(), PreferenceFragmentCompat.OnPr
             const val KEY_ORG_MODE_BANNER = "org_mode_banner"
             const val KEY_ORG_MODE_BUTTON = "org_mode_button"
             const val KEY_MANAGED_BANNER = "managed_banner"
+            const val EXCLUDED_APPS_ENTRY = "excludedAppsEntry"
 
             /** Rows that only inform; they stay readable while the tunnel is up. */
             val INFO_KEYS = setOf(KEY_TUNNEL_LOCK_INFO, KEY_ORG_BANNERS, KEY_ORG_MODE_BANNER, KEY_MANAGED_BANNER)
@@ -674,10 +675,6 @@ class SettingsActivity : BaseNavigationActivity(), PreferenceFragmentCompat.OnPr
             } else {
                 super.onDisplayPreferenceDialog(preference)
             }
-        }
-
-        private companion object {
-            const val EXCLUDED_APPS_ENTRY = "excludedAppsEntry"
         }
     }
 }
