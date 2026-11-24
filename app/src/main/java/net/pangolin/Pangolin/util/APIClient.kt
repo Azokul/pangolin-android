@@ -53,6 +53,9 @@ class APIClient(
 
     private val json = Json { ignoreUnknownKeys = true }
     private val client = OkHttpClient.Builder()
+        // Race IPv6 and IPv4 (Happy Eyeballs, RFC 8305) so a broken AAAA record
+        // doesn't stall every request for the full connect timeout.
+        .fastFallback(true)
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
@@ -262,6 +265,17 @@ class APIClient(
     suspend fun listUserOrgs(userId: String): ListUserOrgsResponse {
         val response = makeRequest("GET", "/user/$userId/orgs")
         return parseResponse(response)
+    }
+
+    /**
+     * The settings the org manages for the current user, or null if it manages none. Servers
+     * that predate client settings answer 404, which means the same thing.
+     */
+    suspend fun getMyClientSettings(orgId: String): ClientSettings? {
+        val response = makeRequest("GET", "/org/$orgId/my-client-settings")
+        if (response.code == 404) return null
+        val result: MyClientSettingsResponse = parseResponse(response)
+        return result.settings
     }
 
     /**

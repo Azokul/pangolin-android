@@ -2,6 +2,7 @@ package net.pangolin.Pangolin
 
 import android.app.Application
 import android.util.Log
+import androidx.preference.PreferenceManager
 import net.pangolin.Pangolin.util.CrashHandler
 import net.pangolin.Pangolin.util.SocketManager
 import net.pangolin.Pangolin.util.StandbyDetector
@@ -30,6 +31,14 @@ class PangolinApplication : Application(), StandbyDetector.StandbyListener {
         CrashHandler.initialize(this)
         
         Log.d(tag, "Pangolin application starting")
+
+        // Persist the Settings screen's defaults before anything reads them. Otherwise a
+        // setting the user never opened Settings for is read with the code's fallback,
+        // which can differ from what the Settings screen shows.
+        // Settings are split across two screens. readAgain is true so the second file is read too
+        // (with false, only the first call ever runs); it still only fills in unset keys.
+        PreferenceManager.setDefaultValues(this, R.xml.general_settings, true)
+        PreferenceManager.setDefaultValues(this, R.xml.connection_settings, true)
 
         // Android creates Application before a system-started VpnService, so this graph is
         // available even when no Activity has been opened in the current process.
