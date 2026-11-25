@@ -19,7 +19,32 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Per-app release key for the "perapp" build. Set by CI (or a local env) only:
+    // PERAPP_KEYSTORE (path), PERAPP_KEYSTORE_PASSWORD, PERAPP_KEY_ALIAS (default "perapp").
+    val perappKeystore = System.getenv("PERAPP_KEYSTORE")?.let { file(it) }?.takeIf { it.exists() }
+    signingConfigs {
+        if (perappKeystore != null) {
+            create("perapp") {
+                storeFile = perappKeystore
+                storePassword = System.getenv("PERAPP_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("PERAPP_KEY_ALIAS") ?: "perapp"
+                keyPassword = System.getenv("PERAPP_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        // Signed build for self-updating installs (GitHub Releases + Obtainium). Same package as the
+        // debug build. versionCode = upstream versionCode * 1000 + CI run number, so it always grows.
+        create("perapp") {
+            initWith(getByName("debug"))
+            isDebuggable = false
+            isJniDebuggable = false
+            applicationIdSuffix = ".perapp"
+            versionNameSuffix = "-perapp" + (System.getenv("PERAPP_BUILD")?.let { ".$it" } ?: "")
+            signingConfig = signingConfigs.findByName("perapp")
+            matchingFallbacks += listOf("release")
+        }
         debug {
             // Installs next to the Play Store app (different package and signing key)
             applicationIdSuffix = ".perapp"
@@ -83,4 +108,15 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// perapp builds: versionCode = upstream versionCode * 1000 + CI build number, so every CI build is
+// an update for Obtainium and upstream version bumps keep it growing. Kept out of defaultConfig so
+// upstream's version bumps merge without conflicts.
+androidComponents {
+    onVariants(selector().withBuildType("perapp")) { variant ->
+        val build = System.getenv("PERAPP_BUILD")?.toIntOrNull() ?: return@onVariants
+        val base = android.defaultConfig.versionCode ?: 1
+        variant.outputs.forEach { output -> output.versionCode.set(base * 1000 + build) }
+    }
 }

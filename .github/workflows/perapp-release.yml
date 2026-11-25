@@ -1,0 +1,94 @@
+# Builds the per-app VPN fork on every push to per-app-vpn and publishes a signed APK as a
+# GitHub Release (tag perapp-<run>). Phones follow it with Obtainium and update by themselves.
+#
+# Secrets (repo Settings -> Secrets and variables -> Actions):
+#   PERAPP_KEYSTORE_B64       base64 of the release keystore (master copy at home, see README-perapp.md)
+#   PERAPP_KEYSTORE_PASSWORD  its store/key password
+name: perapp release
+
+on:
+  push:
+    branches: [per-app-vpn]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: perapp-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      PERAPP_BUILD: ${{ github.run_number }}
+      NDK_VERSION: "29.0.14206865"
+      CMAKE_VERSION: "3.22.1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: NDK and CMake
+        run: sdkmanager --install "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" > /dev/null
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :tunnel:testDebugUnitTest
+
+      - name: Keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.PERAPP_KEYSTORE_B64 }}
+        run: |
+          test -n "$KEYSTORE_B64" || { echo "PERAPP_KEYSTORE_B64 secret missing"; exit 1; }
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/perapp.jks"
+          echo "PERAPP_KEYSTORE=$RUNNER_TEMP/perapp.jks" >> "$GITHUB_ENV"
+
+      - name: Build signed APK (arm64)
+        env:
+          PERAPP_KEYSTORE_PASSWORD: ${{ secrets.PERAPP_KEYSTORE_PASSWORD }}
+        # testOnly=false: with an injected ABI AGP otherwise marks the APK test-only ("App not installed").
+        run: ./gradlew --no-daemon -Pandroid.injected.build.abi=arm64-v8a -Pandroid.injected.testOnly=false :app:assemblePerapp
+
+      - name: Check signature and version
+        id: apk
+        run: |
+          # With an injected ABI the APK lands in intermediates/, not outputs/.
+          APK=$(find app/build -name "*.apk" -path "*perapp*" | head -1)
+          test -n "$APK" || { echo "APK not found"; exit 1; }
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs "$APK" | grep -E "Signer #1 certificate (DN|SHA-256)"
+          VER=$("$BT/aapt2" dump badging "$APK" | grep -oE "versionName='[^']+'" | cut -d"'" -f2)
+          OUT="pangolin-perapp-${VER}-arm64.apk"
+          cp "$APK" "$OUT"
+          echo "file=$OUT" >> "$GITHUB_OUTPUT"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="perapp-${PERAPP_BUILD}"
+          git log -1 --format='%h %s' > notes.txt
+          gh release create "$TAG" "${{ steps.apk.outputs.file }}" \
+            --target "$GITHUB_SHA" --title "Pangolin per-app ${{ steps.apk.outputs.version }}" --notes-file notes.txt
+
+      - name: Remove the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/perapp.jks"
