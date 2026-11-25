@@ -37,6 +37,9 @@ jobs:
           java-version: "21"
 
       - uses: android-actions/setup-android@v3
+        with:
+          # The default also installs the legacy "tools" package, which sdkmanager no longer has.
+          packages: platform-tools
 
       - name: NDK and CMake
         run: sdkmanager --install "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" > /dev/null
