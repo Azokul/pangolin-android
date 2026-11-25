@@ -75,9 +75,17 @@ jobs:
           # With an injected ABI the APK lands in intermediates/, not outputs/.
           APK=$(find app/build -name "*.apk" -path "*perapp*" | head -1)
           test -n "$APK" || { echo "APK not found"; exit 1; }
+          echo "APK: $APK"
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          "$BT/apksigner" verify --print-certs "$APK" | grep -E "Signer #1 certificate (DN|SHA-256)"
-          VER=$("$BT/aapt2" dump badging "$APK" | grep -oE "versionName='[^']+'" | cut -d"'" -f2)
+          echo "build-tools: $BT"
+          "$BT/apksigner" verify --print-certs "$APK" | tee certs.txt
+          # Must be the release key from README-perapp.md, or phones refuse the update.
+          grep -qi "SHA-256 digest: 90e64f244cac190fe0782fe02b21f9c9bcdd5e2a1f866909bcdd2a650edd5602" certs.txt \
+            || { echo "APK not signed with the perapp release key"; exit 1; }
+          BADGING=$("$BT/aapt2" dump badging "$APK" | head -1)
+          echo "$BADGING"
+          VER=$(echo "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")
+          test -n "$VER" || { echo "versionName not found"; exit 1; }
           OUT="pangolin-perapp-${VER}-arm64.apk"
           cp "$APK" "$OUT"
           echo "file=$OUT" >> "$GITHUB_OUTPUT"
